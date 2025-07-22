@@ -115,7 +115,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 	for (int i = 0; i < DAC_BUF_LEN; i++) {
-		dac_buf[i] = i * 128;
+		dac_buf[i] = 1.3f * i * (i - 15) * (i - 31) + 1970;
 	}
 
   /* USER CODE END 1 */
@@ -164,7 +164,7 @@ int main(void)
 	  //HAL_Delay(10);
 	  for (int i = 0; i < ADC_BUF_LEN; i++) {
 		  printf("%u\r\n", adc_buf[i]);
-		  HAL_Delay(10);
+		  //HAL_Delay(10);
 	  }
 
   }
@@ -388,7 +388,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 9999;
+  htim2.Init.Prescaler = 999;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 95;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
