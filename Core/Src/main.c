@@ -101,11 +101,20 @@ PUTCHAR_PROTOTYPE
 }
 
 #define TIM_CLK 96000000
-
-#define ADC_BUF_LEN 32
 #define DAC_BUF_LEN 32
-volatile uint16_t adc_buf[ADC_BUF_LEN];
+#define ADC_BUF_LEN 32
+#define ADC_CHANS 3
+
+volatile uint16_t adc_buf[ADC_BUF_LEN * ADC_CHANS];
 volatile uint16_t dac_buf[DAC_BUF_LEN];
+volatile uint16_t timestamp = 0;
+char osc_mode = 'O';
+
+void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin) {
+	if(GPIO_Pin == USER_Btn_Pin) {
+		timestamp = 0;
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -153,7 +162,7 @@ int main(void)
   HAL_TIM_Base_Start(&htim2);
 
   HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*) dac_buf, DAC_BUF_LEN, DAC_ALIGN_12B_R);
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_buf, ADC_BUF_LEN);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_buf, ADC_BUF_LEN * ADC_CHANS);
 
   /* USER CODE END 2 */
 
@@ -166,8 +175,10 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  int delay = 1000.0f * (htim2.Init.Prescaler + 1) * (htim2.Init.Period + 1) / TIM_CLK;
 	  for (int i = 0; i < ADC_BUF_LEN; i++) {
-		  float voltage = adc_buf[i] * 3.3f / 4095.0f;
-		  printf("%f\r\n", voltage);
+		  uint16_t val_in0 = adc_buf[3 * i];
+		  uint16_t val_in3 = adc_buf[3 * i + 1];
+		  uint16_t val_in5 = adc_buf[3 * i + 2];
+		  printf("%5u %c %4u %4u %4u\r\n", timestamp, osc_mode, val_in0, val_in3, val_in5);
 		  HAL_Delay(delay);
 	  }
   }
@@ -243,7 +254,6 @@ static void MX_ADC1_Init(void)
 
   /* USER CODE END ADC1_Init 0 */
 
-  ADC_AnalogWDGConfTypeDef AnalogWDGConfig = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
 
   /* USER CODE BEGIN ADC1_Init 1 */
@@ -255,28 +265,16 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 3;
   hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure the analog watchdog
-  */
-  AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
-  AnalogWDGConfig.HighThreshold = 100;
-  AnalogWDGConfig.LowThreshold = 0;
-  AnalogWDGConfig.Channel = ADC_CHANNEL_0;
-  AnalogWDGConfig.ITMode = ENABLE;
-  if (HAL_ADC_AnalogWDGConfig(&hadc1, &AnalogWDGConfig) != HAL_OK)
   {
     Error_Handler();
   }
@@ -286,6 +284,24 @@ static void MX_ADC1_Init(void)
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_3;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_5;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
