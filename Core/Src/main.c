@@ -100,10 +100,13 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
+#define TIM_CLK 96000000
+
 #define ADC_BUF_LEN 32
 #define DAC_BUF_LEN 32
 volatile uint16_t adc_buf[ADC_BUF_LEN];
 volatile uint16_t dac_buf[DAC_BUF_LEN];
+
 /* USER CODE END 0 */
 
 /**
@@ -161,12 +164,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //HAL_Delay(10);
+	  int delay = 1000.0f * (htim2.Init.Prescaler + 1) * (htim2.Init.Period + 1) / TIM_CLK;
 	  for (int i = 0; i < ADC_BUF_LEN; i++) {
-		  printf("%u\r\n", adc_buf[i]);
-		  //HAL_Delay(10);
+		  float voltage = adc_buf[i] * 3.3f / 4095.0f;
+		  printf("%f\r\n", voltage);
+		  HAL_Delay(delay);
 	  }
-
   }
   /* USER CODE END 3 */
 }
@@ -240,6 +243,7 @@ static void MX_ADC1_Init(void)
 
   /* USER CODE END ADC1_Init 0 */
 
+  ADC_AnalogWDGConfTypeDef AnalogWDGConfig = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
 
   /* USER CODE BEGIN ADC1_Init 1 */
@@ -261,6 +265,18 @@ static void MX_ADC1_Init(void)
   hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure the analog watchdog
+  */
+  AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
+  AnalogWDGConfig.HighThreshold = 100;
+  AnalogWDGConfig.LowThreshold = 0;
+  AnalogWDGConfig.Channel = ADC_CHANNEL_0;
+  AnalogWDGConfig.ITMode = ENABLE;
+  if (HAL_ADC_AnalogWDGConfig(&hadc1, &AnalogWDGConfig) != HAL_OK)
   {
     Error_Handler();
   }
@@ -388,9 +404,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 999;
+  htim2.Init.Prescaler = 19;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 95;
+  htim2.Init.Period = 4799;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -562,6 +578,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
