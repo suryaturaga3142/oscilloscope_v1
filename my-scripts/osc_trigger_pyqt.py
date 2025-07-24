@@ -1,3 +1,11 @@
+'''
+File: osc_trigger_pyqt.py
+Author: Surya Turaga
+Date: 24 July 2025
+
+A script for single shot triggering and plotting of ADC values.
+'''
+
 import sys
 from collections import deque
 import serial
@@ -8,8 +16,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTimer, Qt
 import pyqtgraph as pg
 
-
+# Class for trigger plotter
 class UARTTriggerPlotter(QWidget):
+    # Initialize the UARTTriggerPlotter
     def __init__(self, port="COM8", baud=115200):
         super().__init__()
 
@@ -21,20 +30,21 @@ class UARTTriggerPlotter(QWidget):
         self.buffer_values = deque(maxlen=self.buffer_len)
 
         self.is_armed = False
-        self.show_live = False  # Controls if plot is live-updating
+        self.show_live = False
 
         self.init_ui()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.read_and_update)
-        self.timer.start(30)
+        self.timer.start(10)
 
+    # Initialize the UI components
     def init_ui(self):
-        self.plot_widget = pg.PlotWidget(title="UART Value vs Timestamp")
+        self.plot_widget = pg.PlotWidget(title="Trigger Ch1: ADC Values vs Time")
         self.plot_curve = self.plot_widget.plot(pen=pg.mkPen('g', width=2))
         self.plot_widget.setYRange(0, 4095, padding=0)
 
-        self.indicator_label = QLabel("ready")
+        self.indicator_label = QLabel("Ready")
         self.indicator_label.setAlignment(Qt.AlignCenter)
         self.indicator_label.setStyleSheet("font-weight: bold; font-size: 16px; color: green;")
 
@@ -108,6 +118,7 @@ class UARTTriggerPlotter(QWidget):
 
         self.setLayout(overall_layout)
 
+    # Change the buffer length for plotting
     def change_buffer_length(self, value):
         value = (value // 32) * 32
         self.buffer_len = value
@@ -126,17 +137,19 @@ class UARTTriggerPlotter(QWidget):
         else:
             self.plot_widget.setXRange(0, 1, padding=0.05)
 
+    # Change the trigger threshold for triggering
     def change_trigger_threshold(self, value):
         self.trigger_threshold = value
         self.trigger_slider_label.setText(f"Trigger threshold: {value}")
 
+    # Toggle arm/disarm state
     def toggle_arm_disarm(self, checked):
         if checked:
             self.is_armed = True
             self.show_live = True
             self.arm_button.setText("Disarm")
             self.arm_button.setStyleSheet("background-color: red; color: white;")
-            self.indicator_label.setText("waiting")
+            self.indicator_label.setText("Waiting")
             self.indicator_label.setStyleSheet("color: yellow; font-weight: bold; font-size: 16px;")
             self.clear_buffer()
             self.plot_curve.clear()
@@ -145,13 +158,15 @@ class UARTTriggerPlotter(QWidget):
             self.show_live = False
             self.arm_button.setText("Arm")
             self.arm_button.setStyleSheet("background-color: green; color: white;")
-            self.indicator_label.setText("ready")
+            self.indicator_label.setText("Ready")
             self.indicator_label.setStyleSheet("color: green; font-weight: bold; font-size: 16px;")
 
+    # Clear the buffer
     def clear_buffer(self):
         self.buffer_timestamps.clear()
         self.buffer_values.clear()
 
+    # Read from serial and update the plot
     def read_and_update(self):
         try:
             while self.serial.in_waiting:
@@ -187,7 +202,7 @@ class UARTTriggerPlotter(QWidget):
                         self.arm_button.setChecked(False)
                         self.arm_button.setText("Arm")
                         self.arm_button.setStyleSheet("background-color: green; color: white;")
-                        self.indicator_label.setText("triggered")
+                        self.indicator_label.setText("Triggered")
                         self.indicator_label.setStyleSheet("color: blue; font-weight: bold; font-size: 16px;")
                         self.plot_full_buffer()
                         break
@@ -196,7 +211,8 @@ class UARTTriggerPlotter(QWidget):
                 self.plot_live()
         except serial.SerialException:
             pass
-
+    
+    # Plot the live data
     def plot_live(self):
         x_data = list(self.buffer_timestamps)
         y_data = list(self.buffer_values)
@@ -204,6 +220,7 @@ class UARTTriggerPlotter(QWidget):
         if x_data:
             self.plot_widget.setXRange(min(x_data), max(x_data), padding=0.05)
 
+    # Plot the full buffer when triggered
     def plot_full_buffer(self):
         x_data = list(self.buffer_timestamps)
         y_data = list(self.buffer_values)
@@ -211,8 +228,7 @@ class UARTTriggerPlotter(QWidget):
         if x_data:
             self.plot_widget.setXRange(min(x_data), max(x_data), padding=0.05)
 
-
-def main():
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = QMainWindow()
     plotter = UARTTriggerPlotter()
@@ -221,7 +237,3 @@ def main():
     window.resize(1200, 600)
     window.show()
     sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
