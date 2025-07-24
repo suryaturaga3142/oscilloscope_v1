@@ -108,7 +108,6 @@ PUTCHAR_PROTOTYPE
 volatile uint16_t adc_buf[ADC_BUF_LEN * ADC_CHANS];
 volatile uint16_t dac_buf[DAC_BUF_LEN];
 volatile uint16_t timestamp = 0;
-char osc_mode = 'O';
 
 void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin) {
 	if(GPIO_Pin == USER_Btn_Pin) {
@@ -178,7 +177,7 @@ int main(void)
 		  uint16_t val_in0 = adc_buf[3 * i];
 		  uint16_t val_in3 = adc_buf[3 * i + 1];
 		  uint16_t val_in5 = adc_buf[3 * i + 2];
-		  printf("%5u %c %4u %4u %4u\r\n", timestamp, osc_mode, val_in0, val_in3, val_in5);
+		  printf("%5u %4u %4u %4u\r\n", timestamp, val_in0, val_in3, val_in5);
 		  HAL_Delay(delay);
 	  }
   }
