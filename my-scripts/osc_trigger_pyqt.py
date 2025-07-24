@@ -3,7 +3,7 @@ from collections import deque
 import serial
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel,
-    QHBoxLayout, QPushButton, QSlider
+    QHBoxLayout, QPushButton, QSlider, QComboBox
 )
 from PySide6.QtCore import QTimer, Qt
 import pyqtgraph as pg
@@ -36,8 +36,27 @@ class UARTTriggerPlotter(QWidget):
 
         self.indicator_label = QLabel("ready")
         self.indicator_label.setAlignment(Qt.AlignCenter)
-        self.indicator_label.setStyleSheet("font-weight: bold; font-size: 16px;")
+        self.indicator_label.setStyleSheet("font-weight: bold; font-size: 16px; color: green;")
 
+        # Arm button
+        self.arm_button = QPushButton("Arm")
+        self.arm_button.setCheckable(True)
+        self.arm_button.setStyleSheet("background-color: green; color: white;")
+        self.arm_button.toggled.connect(self.toggle_arm_disarm)
+
+        # Edge selection combobox: right of Arm button
+        self.edge_selector = QComboBox()
+        self.edge_selector.addItems(["Posedge", "Negedge"])
+        self.edge_selector.setToolTip("Select trigger edge")
+        self.edge_selector.setFixedWidth(100)
+
+        # Layout for top-left row: arm button and edge selector side by side
+        top_left_row = QHBoxLayout()
+        top_left_row.addWidget(self.arm_button)
+        top_left_row.addWidget(self.edge_selector)
+        top_left_row.addStretch(1)  # push widgets to left
+
+        # Buffer length slider and label
         self.buffer_slider_label = QLabel(f"Buffer length: {self.buffer_len}")
         self.buffer_slider = QSlider(Qt.Vertical)
         self.buffer_slider.setMinimum(32)
@@ -47,6 +66,7 @@ class UARTTriggerPlotter(QWidget):
         self.buffer_slider.setValue(self.buffer_len)
         self.buffer_slider.valueChanged.connect(self.change_buffer_length)
 
+        # Trigger slider and label
         self.trigger_slider_label = QLabel(f"Trigger threshold: {self.trigger_threshold}")
         self.trigger_slider = QSlider(Qt.Vertical)
         self.trigger_slider.setMinimum(0)
@@ -55,13 +75,10 @@ class UARTTriggerPlotter(QWidget):
         self.trigger_slider.setValue(self.trigger_threshold)
         self.trigger_slider.valueChanged.connect(self.change_trigger_threshold)
 
-        self.arm_button = QPushButton("Arm")
-        self.arm_button.setCheckable(True)
-        self.arm_button.toggled.connect(self.toggle_arm_disarm)
-
+        # Layout for sliders (vertical stack)
         sliders_layout = QHBoxLayout()
         sliders_left_layout = QVBoxLayout()
-        sliders_left_layout.addWidget(self.arm_button)
+        # Put sliders labels above sliders
         sliders_left_layout.addWidget(self.buffer_slider_label)
         sliders_left_layout.addWidget(self.buffer_slider)
         sliders_left_layout.addStretch()
@@ -72,13 +89,24 @@ class UARTTriggerPlotter(QWidget):
 
         sliders_layout.addLayout(sliders_left_layout)
         sliders_layout.addLayout(sliders_right_layout)
-        sliders_layout.addWidget(self.plot_widget)
 
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(self.indicator_label)
-        main_layout.addLayout(sliders_layout)
+        # Left side total layout: top row (button+combobox) + sliders below
+        left_layout = QVBoxLayout()
+        left_layout.addLayout(top_left_row)
+        left_layout.addLayout(sliders_layout)
+        left_layout.addStretch()
 
-        self.setLayout(main_layout)
+        # Main layout horizontally: left controls + plot to right
+        main_layout = QHBoxLayout()
+        main_layout.addLayout(left_layout)
+        main_layout.addWidget(self.plot_widget, stretch=1)
+
+        # Overall vertical with indicator label on top
+        overall_layout = QVBoxLayout()
+        overall_layout.addWidget(self.indicator_label)
+        overall_layout.addLayout(main_layout)
+
+        self.setLayout(overall_layout)
 
     def change_buffer_length(self, value):
         value = (value // 32) * 32
@@ -93,8 +121,8 @@ class UARTTriggerPlotter(QWidget):
 
         if self.buffer_timestamps:
             self.plot_widget.setXRange(min(self.buffer_timestamps),
-                                      max(self.buffer_timestamps),
-                                      padding=0.05)
+                                       max(self.buffer_timestamps),
+                                       padding=0.05)
         else:
             self.plot_widget.setXRange(0, 1, padding=0.05)
 
@@ -107,15 +135,18 @@ class UARTTriggerPlotter(QWidget):
             self.is_armed = True
             self.show_live = True
             self.arm_button.setText("Disarm")
+            self.arm_button.setStyleSheet("background-color: red; color: white;")
             self.indicator_label.setText("waiting")
+            self.indicator_label.setStyleSheet("color: yellow; font-weight: bold; font-size: 16px;")
             self.clear_buffer()
             self.plot_curve.clear()
         else:
             self.is_armed = False
             self.show_live = False
             self.arm_button.setText("Arm")
+            self.arm_button.setStyleSheet("background-color: green; color: white;")
             self.indicator_label.setText("ready")
-            # Buffer is NOT cleared, new UART data keeps being collected, but plot does not update
+            self.indicator_label.setStyleSheet("color: green; font-weight: bold; font-size: 16px;")
 
     def clear_buffer(self):
         self.buffer_timestamps.clear()
@@ -139,20 +170,28 @@ class UARTTriggerPlotter(QWidget):
                 self.buffer_timestamps.append(timestamp)
                 self.buffer_values.append(value)
 
-                # "Trigger" check only when armed and buffer full
                 if self.is_armed and len(self.buffer_values) == self.buffer_len:
                     mid_index = self.buffer_len // 2
                     middle_value = self.buffer_values[mid_index]
-                    if middle_value > self.trigger_threshold:
+                    edge = self.edge_selector.currentText()
+                    triggered = False
+                    if edge == "Posedge":
+                        if middle_value > self.trigger_threshold:
+                            triggered = True
+                    else:  # Negedge
+                        if middle_value < self.trigger_threshold:
+                            triggered = True
+                    if triggered:
                         self.is_armed = False
                         self.show_live = False
                         self.arm_button.setChecked(False)
                         self.arm_button.setText("Arm")
+                        self.arm_button.setStyleSheet("background-color: green; color: white;")
                         self.indicator_label.setText("triggered")
+                        self.indicator_label.setStyleSheet("color: blue; font-weight: bold; font-size: 16px;")
                         self.plot_full_buffer()
                         break
 
-            # Always update live plot only when show_live is set
             if self.show_live and self.buffer_values and self.buffer_timestamps:
                 self.plot_live()
         except serial.SerialException:
@@ -179,7 +218,7 @@ def main():
     plotter = UARTTriggerPlotter()
     window.setCentralWidget(plotter)
     window.setWindowTitle("UART Trigger Plotter")
-    window.resize(1100, 600)
+    window.resize(1200, 600)
     window.show()
     sys.exit(app.exec())
 
