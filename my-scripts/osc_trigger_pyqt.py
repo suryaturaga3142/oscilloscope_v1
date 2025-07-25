@@ -43,6 +43,7 @@ class UARTTriggerPlotter(QWidget):
         self.plot_widget = pg.PlotWidget(title="Trigger Ch1: ADC Values vs Time")
         self.plot_curve = self.plot_widget.plot(pen=pg.mkPen('g', width=2))
         self.plot_widget.setYRange(0, 4095, padding=0)
+        self.plot_widget.showGrid(x=True, y=True)
 
         self.indicator_label = QLabel("Ready")
         self.indicator_label.setAlignment(Qt.AlignCenter)

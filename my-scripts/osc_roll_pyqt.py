@@ -39,10 +39,11 @@ class UARTMultiChannelPlotter(QWidget):
     # Initialize the UI components
     def init_ui(self):
         self.plot_widget = pg.PlotWidget(title="Roll Mode: ADC Values vs Time")
-        self.curve1 = self.plot_widget.plot(pen=pg.mkPen('r', width=2), name='Value 1')
-        self.curve2 = self.plot_widget.plot(pen=pg.mkPen('g', width=2), name='Value 2')
-        self.curve3 = self.plot_widget.plot(pen=pg.mkPen('b', width=2), name='Value 3')
+        self.curve1 = self.plot_widget.plot(pen=pg.mkPen('r', width=2), name='Channel 1')
+        self.curve2 = self.plot_widget.plot(pen=pg.mkPen('g', width=2), name='Channel 2')
+        self.curve3 = self.plot_widget.plot(pen=pg.mkPen('b', width=2), name='Channel 3')
         self.plot_widget.setYRange(0, 4095, padding=0)
+        self.plot_widget.showGrid(x=True, y=True)
 
         # Start/Stop button
         self.start_stop_button = QPushButton("Start")
@@ -61,12 +62,15 @@ class UARTMultiChannelPlotter(QWidget):
         self.buffer_slider.valueChanged.connect(self.change_buffer_length)
 
         # Checkboxes to toggle curves
-        self.chk_val1 = QCheckBox("Value 1")
-        self.chk_val2 = QCheckBox("Value 2")
-        self.chk_val3 = QCheckBox("Value 3")
+        self.chk_val1 = QCheckBox("Channel 1")
+        self.chk_val2 = QCheckBox("Channel 2")
+        self.chk_val3 = QCheckBox("Channel 3")
         self.chk_val1.setChecked(True)
         self.chk_val2.setChecked(True)
         self.chk_val3.setChecked(True)
+        self.chk_val1.setStyleSheet("color: red;")
+        self.chk_val2.setStyleSheet("color: green;")
+        self.chk_val3.setStyleSheet("color: blue;")
 
         # Left layout: Start/Stop + buffer slider + checkboxes
         left_layout = QVBoxLayout()
@@ -121,9 +125,9 @@ class UARTMultiChannelPlotter(QWidget):
             self.clear_buffers()
             self.plot_widget.clear()
             # recreate curves to assign to plot
-            self.curve1 = self.plot_widget.plot(pen=pg.mkPen('r', width=2), name='Value 1')
-            self.curve2 = self.plot_widget.plot(pen=pg.mkPen('g', width=2), name='Value 2')
-            self.curve3 = self.plot_widget.plot(pen=pg.mkPen('b', width=2), name='Value 3')
+            self.curve1 = self.plot_widget.plot(pen=pg.mkPen('r', width=2), name='Channel 1')
+            self.curve2 = self.plot_widget.plot(pen=pg.mkPen('g', width=2), name='Channel 2')
+            self.curve3 = self.plot_widget.plot(pen=pg.mkPen('b', width=2), name='Channel 3')
         else:
             # Stop pressed
             self.is_running = False
@@ -192,7 +196,7 @@ if __name__ == "__main__":
     window = QMainWindow()
     plotter = UARTMultiChannelPlotter()
     window.setCentralWidget(plotter)
-    window.setWindowTitle("UART Multi-Channel Plotter")
+    window.setWindowTitle("UART Multi-Channel Roll Plotter")
     window.resize(1200, 600)
     window.show()
     sys.exit(app.exec())
