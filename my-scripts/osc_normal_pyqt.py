@@ -1,3 +1,11 @@
+'''
+File: osc_normal_pyqt.py
+Author: Surya Turaga
+Date: 25 July 2025
+
+A script for normal mode plotting of ADC values.
+'''
+
 import sys
 from collections import deque
 import serial
@@ -125,7 +133,10 @@ class UARTBufferTriggerPlotter(QWidget):
             # Trigger check operates only in Start (running) state, and only when buffer is full
             if self.is_running and len(self.buffer_values) == self.buffer_len:
                 first_value = self.buffer_values[0]
-                if int(first_value) >= self.trigger_value - 100 and int(first_value) <= self.trigger_value + 100:
+                second_value = self.buffer_values[1]
+                #if int(first_value) >= self.trigger_value - 100 and int(first_value) <= self.trigger_value + 100:
+                if (int(first_value) - self.trigger_value) * (int(second_value) - self.trigger_value) <= 0:
+                    # Trigger condition met, plot the data
                     x = list(self.buffer_timestamps)
                     y = list(self.buffer_values)
                     self.curve.setData(x, y)
