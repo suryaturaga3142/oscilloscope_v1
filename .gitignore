@@ -1,0 +1,30 @@
+# Build artifacts
+Debug/
+Release/
+build/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+
+# IDE-specific metadata
+.settings/
+.metadata/
+*.launch
+
+# Auto-generated makefiles and object lists
+*.mk
+*.dep
+
+# Logs and caches
+*.log
+*.swp
+*.tmp
+*.bak
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
