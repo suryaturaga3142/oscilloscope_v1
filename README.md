@@ -45,18 +45,17 @@ This project was more scripting intensive. I chose Python for its libraries and 
 It allowed for faster and more versatile plotting.
 
 > [!NOTE]
-> I used the help of [perplexity](https://www.perplexity.ai/) as an AI tool for helping with scripting, troubleshooting and understanding the use of ```PySide6```. ```pyqtgraph``` and ```PySide6``` aren't easy to use, so make sure you understand them properly.
+> Use of AI: I used the help of [perplexity](https://www.perplexity.ai/) as an AI tool for helping with scripting, troubleshooting and understanding the use of ```PySide6```. ```pyqtgraph``` and ```PySide6``` aren't easy to use, so make sure you understand them properly.
 
 ## Development
 
-The goal was to add a good amount of functionality to the microcontroller as well as the python scripts. 
-The data was be entirely collected, processed, and formatted in the controller. The scripts should be in charge of queueing the data and plotting it.
+The goal was to add a good amount of functionality to the microcontroller as well as the python scripts. The data was be entirely collected, processed, and formatted in the controller. The scripts should be in charge of queueing the data and plotting it. I should add that this project is definitely more a scripting project than a microcontroller one, oriented towards understanding the libraries and developing a clean UI.
 
 I started out with optimizing ADC operation as much as possible. Given the necessity for high frequency conversion, the choice to use the DAC and ADC in DMA circular mode was fairly obvious. 
 The circular buffers allowed constant running. 
 To allow for reliable periodic measurements, they were configured to capture by a timer trigger event. 
 I set the DAC buffer to a sine wave, so adjusting the timer was an easy way of adjusting the input signal frequency. 
-I calibrated delays and configured a convenient method of sending data through UART.
+I calibrated delays and configured a convenient method of sending data through UART that also let me debug from terminal.
 
 > [!NOTE]
 > It looks like I just used a plain ol' ```printf``` in my code, but I didn't. If you look at my prototype definitions in [main.c](Core/Src/main.c), you'll see that I retargeted the output of ```fputc``` to use ```HAL_UART_Transmit```. It's a lot easier than using ```sprintf``` to format a string and send the string with HAL functions.
@@ -82,12 +81,12 @@ Normal mode was conceptually more complicated for me to wrap my head around. The
 Of course, I realized I was being silly when I saw that my sine waves that were captured on posedge were also getting captured on the immediate negedge, since what goes up, comes down! 
 Fixed that by clearing the buffer after each plotting event.
 
-An interesting challenge was figuring out the limitations of this oscilloscope. Frequency, resolution, etc. One glaringly clear one is that it's technically better suited to logic analysis since we're limited to 0-3.3V. The fastest that the oscilloscope can collect values from the ADC is extremely high. The TIM_CLK is 96MHz and each ADC conversion takes 3 clock cycles. However, the operation is currently limited by the script, which samples at a rate of upto 1kHz. The brings the highest reliably measurable signal frequency to 500Hz, the Nyquist frequency.
+An interesting challenge was figuring out the limitations of this oscilloscope. Frequency, resolution, etc. One glaringly clear one is that it's technically better suited to logic analysis since we're limited to $0-3.3V$. The 12-bit resolution of ADCs means that the max resolution is $0.806mV$. The fastest that the oscilloscope can collect values from the ADC is extremely high. The TIM_CLK is 96MHz and each ADC conversion takes 3 clock cycles. However, the operation is currently limited by the script, which samples at a rate of upto $1kHz$. The brings the highest reliably measurable signal frequency to $500Hz$, the Nyquist frequency.
 
 ## Final Thoughts
 
 This project was really fun. Took me less time than I expected to complete it. I can see a lot of room for future improvement, starting with more functionality such as measurement tools and new operation modes like FRAs and transforms. FRAs would be made possible if a wavegen was setup. The easiest thing to do would be to make signal capture a lot faster. For now, it's a good tool for me to quickly diagnose signals and sensors while working.
 
-Currently, a measurement is taken and immediately sent over UART through ```printf```. A typical ```uint16_t``` made up of 2 bytes needs 5 ASCII characters (upto 65535) to express in this manner, where each ASCII character is 1 byte. This is entirely unecessary and only done to allow the transmission to be readable from the terminal. Really, only 2 bytes (2 ASCII chars) are needed to send through bit stuffing. Having expected sizes, buffers like spaces can be removed entirely. Additionally, using DMA to transmit data with methods like double buffering will speed up the rate from 500Hz to easily above 50kHz!
+Currently, a measurement is taken and immediately sent over UART through ```printf```. A typical ```uint16_t``` made up of 2 bytes needs 5 ASCII characters (upto 65535) to express in this manner, where each ASCII character is 1 byte. This is entirely unecessary and only done to allow the transmission to be readable from the terminal. Really, only 2 bytes (2 ASCII chars) are needed to send through bit stuffing. Having expected sizes, buffers like spaces can be removed entirely. Then there's also the delay caused with starting and stopping UART transmission. Using DMA to transmit data with methods like double buffering will speed up the rate from 500Hz to easily above $50kHz$!
 
-Research on different stuff has also given rise to new ideas that I could implement in the future! I'll likely use the learnings from this somewhere else.
+Research on different stuff has also given rise to new ideas that I could implement in the future! You will likely see big improvements upon this project implemented in other projects of mine.
